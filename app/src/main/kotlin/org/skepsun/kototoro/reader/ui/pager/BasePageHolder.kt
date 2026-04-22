@@ -32,7 +32,7 @@ import org.skepsun.kototoro.reader.ui.config.ReaderSettings
 import org.skepsun.kototoro.reader.ui.pager.vm.PageState
 import org.skepsun.kototoro.reader.ui.pager.vm.PageViewModel
 import org.skepsun.kototoro.reader.ui.pager.webtoon.WebtoonHolder
-import coil3.dispose
+import coil3.util.CoilUtils
 
 abstract class BasePageHolder<B : ViewBinding>(
 	protected val binding: B,
@@ -169,7 +169,7 @@ abstract class BasePageHolder<B : ViewBinding>(
 	open fun onRecycled() {
 		viewModel.onRecycle()
 		ssiv.recycle()
-		imageAnimated.dispose() 
+		CoilUtils.dispose(imageAnimated)
 		imageAnimated.setImageDrawable(null)
 		imageAnimated.isVisible = false
 		ssiv.isVisible = true

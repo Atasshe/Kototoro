@@ -284,6 +284,7 @@ configurations.all {
 	implementation libs.markwon
 	implementation libs.kizzyrpc
 	implementation libs.ucrop
+	implementation libs.coil.android
 
 	// EPUB support for Novelia Wenku
 	implementation libs.epublib

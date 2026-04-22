@@ -1,5 +1,5 @@
 package org.skepsun.kototoro.reader.ui.pager.vm
-
+import android.net.Uri
 import com.davemorrissey.labs.subscaleview.ImageSource
 
 sealed class PageState {
@@ -40,5 +40,5 @@ sealed class PageState {
 		val error: Throwable,
 	) : PageState()
 
-	fun isFinalState(): Boolean = this is Error || this is Shown
+	fun isFinalState(): Boolean = this is Error || this is Shown || this is ShownAnimated
 }
