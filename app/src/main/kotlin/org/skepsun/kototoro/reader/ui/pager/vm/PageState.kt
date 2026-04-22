@@ -16,6 +16,10 @@ sealed class PageState {
 		val isConverted: Boolean,
 	) : PageState()
 
+	data class LoadedAnimated(
+        val uri: Uri,
+    ) : PageState()
+
 	data class AwaitingTranslation(
 		val source: ImageSource,
 		val isConverted: Boolean,
@@ -27,6 +31,10 @@ sealed class PageState {
 		val source: ImageSource,
 		val isConverted: Boolean,
 	) : PageState()
+
+	data class ShownAnimated(
+        val uri: Uri,
+    ) : PageState()
 
 	data class Error(
 		val error: Throwable,

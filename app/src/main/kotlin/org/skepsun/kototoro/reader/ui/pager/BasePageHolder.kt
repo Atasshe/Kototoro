@@ -32,6 +32,7 @@ import org.skepsun.kototoro.reader.ui.config.ReaderSettings
 import org.skepsun.kototoro.reader.ui.pager.vm.PageState
 import org.skepsun.kototoro.reader.ui.pager.vm.PageViewModel
 import org.skepsun.kototoro.reader.ui.pager.webtoon.WebtoonHolder
+import coil3.dispose
 
 abstract class BasePageHolder<B : ViewBinding>(
 	protected val binding: B,
@@ -53,6 +54,7 @@ abstract class BasePageHolder<B : ViewBinding>(
 	)
 	protected val bindingInfo = LayoutPageInfoBinding.bind(binding.root)
 	protected abstract val ssiv: SubsamplingScaleImageView
+	protected abstract val imageAnimated: android.widget.ImageView
 
 	protected val settings: ReaderSettings
 		get() = viewModel.settingsProducer.value
@@ -167,6 +169,10 @@ abstract class BasePageHolder<B : ViewBinding>(
 	open fun onRecycled() {
 		viewModel.onRecycle()
 		ssiv.recycle()
+		imageAnimated.dispose() 
+		imageAnimated.setImageDrawable(null)
+		imageAnimated.isVisible = false
+		ssiv.isVisible = true
 	}
 
 	override fun onTrimMemory(level: Int) {
@@ -191,6 +197,23 @@ abstract class BasePageHolder<B : ViewBinding>(
 			bindingInfo.textViewStatus.setText(R.string.loading_)
 		}
 		when (state) {
+
+			is PageState.LoadedAnimated -> {
+				bindingInfo.layoutProgress.isGone = true
+				ssiv.isVisible = false
+				imageAnimated.isVisible = true
+				imageAnimated.load(state.uri) {
+					listener(
+						onSuccess = { _, _ ->
+							viewModel.state.value = PageState.ShownAnimated(state.uri)
+						},
+						onError = { _, result ->
+							viewModel.state.value = PageState.Error(result.throwable)
+						}
+					)
+				}
+			}
+
 			is PageState.Converting -> {
 				bindingInfo.textViewStatus.setText(R.string.processing_)
 			}
@@ -198,6 +221,10 @@ abstract class BasePageHolder<B : ViewBinding>(
 			is PageState.AwaitingTranslation -> {
 				bindingInfo.layoutProgress.isGone = true
 				ssiv.setImage(state.source)
+			}
+
+			is PageState.ShownAnimated -> {
+				
 			}
 
 			is PageState.Empty -> Unit
@@ -214,6 +241,8 @@ abstract class BasePageHolder<B : ViewBinding>(
 			}
 
 			is PageState.Loaded -> {
+				imageAnimated.isVisible = false
+				ssiv.isVisible = true
 				bindingInfo.textViewStatus.setText(R.string.preparing_)
 				ssiv.setImage(state.source)
 			}

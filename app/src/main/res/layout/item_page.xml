@@ -37,6 +37,15 @@
 		android:textColor="?android:textColorTertiary"
 		tools:text="5" />
 
+	<ImageView
+		android:id="@+id/image_animated"
+		android:layout_width="match_parent"
+		android:layout_height="match_parent"
+		android:visibility="gone"
+		android:scaleType="fitCenter"
+		android:importantForAccessibility="no" />
+
+
 	<include layout="@layout/layout_page_info" />
 
 </FrameLayout>

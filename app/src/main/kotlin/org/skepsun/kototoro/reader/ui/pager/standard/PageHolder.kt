@@ -57,6 +57,7 @@ open class PageHolder(
 ), ZoomControl.ZoomControlListener, OnApplyWindowInsetsListener {
 
 	override val ssiv = binding.ssiv
+	override val imageAnimated = binding.imageAnimated 
 	private val holderScope: CoroutineScope = owner.lifecycleScope
 	private val ssivOriginal = binding.ssivOriginal
 	private var dualLayerLoadJob: Job? = null

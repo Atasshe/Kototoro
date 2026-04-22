@@ -16,6 +16,17 @@
 		app:quickScaleEnabled="false"
 		app:zoomEnabled="false" />
 
+	<ImageView
+		android:id="@+id/image_animated"
+		android:layout_width="match_parent"
+		android:layout_height="wrap_content"
+		android:visibility="gone"
+		android:scaleType="fitCenter"
+		android:adjustViewBounds="true"
+		android:importantForAccessibility="no" />
+
+
+
 	<include layout="@layout/layout_page_info" />
 
 </org.skepsun.kototoro.reader.ui.pager.webtoon.WebtoonFrameLayout>

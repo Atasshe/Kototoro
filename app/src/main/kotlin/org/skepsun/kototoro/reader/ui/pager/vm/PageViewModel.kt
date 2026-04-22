@@ -188,6 +188,24 @@ class PageViewModel(
 		}
 	}
 
+	private fun isAnimatedImage(uri: Uri): Boolean {
+		if (uri.scheme != "file") return false
+		val path = uri.path ?: return false
+		val file = java.io.File(path)
+		if (!file.exists()) return false
+		return try {
+			file.inputStream().use { stream ->
+				val header = ByteArray(6)
+				stream.read(header)
+				header[0] == 'G'.code.toByte() &&
+				header[1] == 'I'.code.toByte() &&
+				header[2] == 'F'.code.toByte()
+			}
+		} catch (e: Exception) {
+			false
+		}
+	}
+
 	private fun tryConvert(uri: Uri, e: Exception) {
 		val prevJob = job
 		job = scope.launch(Dispatchers.Default) {
@@ -227,11 +245,15 @@ class PageViewModel(
 				currentUri = uri,
 				showTranslated = settingsProducer.value.isTranslationShowTranslated,
 			) ?: uri
-			cachedBounds = resolveTrimmedBounds(displayUri)
-			state.value = if (settingsProducer.value.isTranslationEnabled && settingsProducer.value.isTranslationShowTranslated && displayUri == uri) {
-				PageState.AwaitingTranslation(displayUri.toImageSource(cachedBounds), isConverted = false)
+			if (isAnimatedImage(displayUri)) {
+				state.value = PageState.LoadedAnimated(displayUri)
 			} else {
-				PageState.Loaded(displayUri.toImageSource(cachedBounds), isConverted = false)
+				cachedBounds = resolveTrimmedBounds(displayUri)
+				state.value = if (...) {
+					PageState.AwaitingTranslation(...)
+				} else {
+					PageState.Loaded(displayUri.toImageSource(cachedBounds), isConverted = false)
+				}
 			}
 			applyPendingLayerSwitchIfNeeded(data, displayUri)
 		} catch (e: CancellationException) {
