@@ -195,11 +195,77 @@ class PageViewModel(
 		if (!file.exists()) return false
 		return try {
 			file.inputStream().use { stream ->
-				val header = ByteArray(6)
-				stream.read(header)
-				header[0] == 'G'.code.toByte() &&
-				header[1] == 'I'.code.toByte() &&
-				header[2] == 'F'.code.toByte()
+				val header = ByteArray(1024)
+				val bytesRead = stream.read(header)
+				if (bytesRead < 6) return false
+				
+				// Check GIF
+				if (header[0] == 'G'.code.toByte() && 
+					header[1] == 'I'.code.toByte() && 
+					header[2] == 'F'.code.toByte()
+				) {
+					return true
+				}
+				
+				// Check Animated WebP
+				if (bytesRead >= 17 &&
+					header[0] == 'R'.code.toByte() &&
+					header[1] == 'I'.code.toByte() &&
+					header[2] == 'F'.code.toByte() &&
+					header[3] == 'F'.code.toByte() &&
+					header[8] == 'W'.code.toByte() &&
+					header[9] == 'E'.code.toByte() &&
+					header[10] == 'B'.code.toByte() &&
+					header[11] == 'P'.code.toByte() &&
+					header[12] == 'V'.code.toByte() &&
+					header[13] == 'P'.code.toByte() &&
+					header[14] == '8'.code.toByte() &&
+					header[15] == 'X'.code.toByte() &&
+					(header[16].toInt() and 0x02) != 0
+				) {
+					return true
+				}
+				
+				// Check Animated AVIF (AVIS)
+				if (bytesRead >= 12 &&
+					header[4] == 'f'.code.toByte() && 
+					header[5] == 't'.code.toByte() && 
+					header[6] == 'y'.code.toByte() && 
+					header[7] == 'p'.code.toByte()
+				) {
+					val majorBrand = String(header, 8, 4)
+					if (majorBrand == "avis") return true
+					
+					val numCompatibleBrands = (bytesRead - 16) / 4
+					for (i in 0 until numCompatibleBrands) {
+						val offset = 16 + i * 4
+						if (offset + 4 <= bytesRead) {
+							val brand = String(header, offset, 4)
+							if (brand == "avis") return true
+						}
+					}
+				}
+
+				// Check APNG
+				if (bytesRead >= 8 && 
+					header[0] == 0x89.toByte() && header[1] == 0x50.toByte() && 
+					header[2] == 0x4E.toByte() && header[3] == 0x47.toByte() &&
+					header[4] == 0x0D.toByte() && header[5] == 0x0A.toByte() && 
+					header[6] == 0x1A.toByte() && header[7] == 0x0A.toByte()
+				) {
+					// Search for the 'acTL' chunk (Animation Control Chunk) which indicates APNG
+					for (i in 8 until (bytesRead - 4)) {
+						if (header[i] == 'a'.code.toByte() && 
+							header[i+1] == 'c'.code.toByte() && 
+							header[i+2] == 'T'.code.toByte() && 
+							header[i+3] == 'L'.code.toByte()
+						) {
+							return true
+						}
+					}
+				}
+				
+				false
 			}
 		} catch (e: Exception) {
 			false

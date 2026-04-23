@@ -94,7 +94,7 @@ class PageLoader @Inject constructor(
 	lifecycle: ActivityRetainedLifecycle,
 	@ContentHttpClient private val okHttp: OkHttpClient,
 	@PageCache private val cache: LocalStorageCache,
-	private val coil: ImageLoader,
+	internal val coil: ImageLoader,
 	private val settings: AppSettings,
 	private val mangaRepositoryFactory: ContentRepository.Factory,
 	private val imageProxyInterceptor: ImageProxyInterceptor,

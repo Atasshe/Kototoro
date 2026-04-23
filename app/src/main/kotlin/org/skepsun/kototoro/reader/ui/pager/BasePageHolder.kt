@@ -11,6 +11,12 @@ import androidx.core.view.isVisible
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.lifecycleScope
 import androidx.viewbinding.ViewBinding
+import coil3.ImageLoader
+import coil3.request.ErrorResult
+import coil3.request.ImageRequest
+import coil3.request.SuccessResult
+import coil3.request.target
+import coil3.util.CoilUtils
 import com.davemorrissey.labs.subscaleview.DefaultOnImageEventListener
 import com.davemorrissey.labs.subscaleview.SubsamplingScaleImageView
 import kotlinx.coroutines.Dispatchers
@@ -32,7 +38,6 @@ import org.skepsun.kototoro.reader.ui.config.ReaderSettings
 import org.skepsun.kototoro.reader.ui.pager.vm.PageState
 import org.skepsun.kototoro.reader.ui.pager.vm.PageViewModel
 import org.skepsun.kototoro.reader.ui.pager.webtoon.WebtoonHolder
-import coil3.util.CoilUtils
 
 abstract class BasePageHolder<B : ViewBinding>(
 	protected val binding: B,
@@ -44,6 +49,7 @@ abstract class BasePageHolder<B : ViewBinding>(
 	lifecycleOwner: LifecycleOwner,
 ) : LifecycleAwareViewHolder(binding.root, lifecycleOwner), DefaultOnImageEventListener, ComponentCallbacks2 {
 
+	private val coil: ImageLoader = loader.coil
 	protected val viewModel = PageViewModel(
 		loader = loader,
 		enhancementController = enhancementController,
@@ -202,16 +208,19 @@ abstract class BasePageHolder<B : ViewBinding>(
 				bindingInfo.layoutProgress.isGone = true
 				ssiv.isVisible = false
 				imageAnimated.isVisible = true
-				imageAnimated.load(state.uri) {
-					listener(
-						onSuccess = { _, _ ->
+				val request = ImageRequest.Builder(context)
+					.data(state.uri)
+					.target(imageAnimated)
+					.listener(
+						onSuccess = { _: ImageRequest, _: SuccessResult ->
 							viewModel.state.value = PageState.ShownAnimated(state.uri)
 						},
-						onError = { _, result ->
+						onError = { _: ImageRequest, result: ErrorResult ->
 							viewModel.state.value = PageState.Error(result.throwable)
-						}
+						},
 					)
-				}
+					.build()
+				coil.enqueue(request)
 			}
 
 			is PageState.Converting -> {
