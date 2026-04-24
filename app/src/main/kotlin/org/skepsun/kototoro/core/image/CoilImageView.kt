@@ -1,6 +1,7 @@
 package org.skepsun.kototoro.core.image
 
 import android.content.Context
+import android.graphics.drawable.Animatable
 import android.graphics.drawable.Drawable
 import android.util.AttributeSet
 import androidx.annotation.AttrRes
@@ -110,6 +111,9 @@ open class CoilImageView @JvmOverloads constructor(
 	override fun onSuccess(request: ImageRequest, result: SuccessResult) {
 		super.onSuccess(request, result)
 		listeners?.forEach { it.onSuccess(request, result) }
+		(drawable as? Animatable)?.let { anim ->
+			if (!anim.isRunning) anim.start()
+		}
 	}
 
 	fun addImageRequestListener(listener: ImageRequest.Listener) {
@@ -155,9 +159,23 @@ open class CoilImageView @JvmOverloads constructor(
 			.build(),
 	)
 
+	override fun onAttachedToWindow() {
+		super.onAttachedToWindow()
+		(drawable as? Animatable)?.let { anim ->
+			if (!anim.isRunning) anim.start()
+		}
+	}
+
+	override fun onDetachedFromWindow() {
+		(drawable as? Animatable)?.stop()
+		super.onDetachedFromWindow()
+	}
+
 	fun disposeImage() {
 		networkWaitingJob?.cancel()
 		networkWaitingJob = null
+		(drawable as? Animatable)?.stop()
+		(drawable as? AnimatedAvifDrawable)?.dispose()
 		CoilUtils.dispose(this)
 		currentRequest = null
 		currentImageData = NullRequestData

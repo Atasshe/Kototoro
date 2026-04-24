@@ -161,6 +161,10 @@ interface AppModule {
 							connectivityChecker = { networkStateProvider.get() },
 						),
 					)
+					// AvifImageDecoder must run before AnimatedImageDecoder: Coil's decoder
+					// claims AVIS but delegates to Android's ImageDecoder, which only
+					// returns the first frame. Our decoder iterates frames via libavif.
+					add(AvifImageDecoder.Factory())
 					if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
 						add(AnimatedImageDecoder.Factory())
 					} else {
@@ -168,7 +172,6 @@ interface AppModule {
 					}
 					add(SvgDecoder.Factory())
 					add(CbzFetcher.Factory())
-					add(AvifImageDecoder.Factory())
 					add(faviconFetcherFactory)
 					add(ContentPageKeyer())
 					add(pageFetcherFactory)

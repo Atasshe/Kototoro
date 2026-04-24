@@ -18,6 +18,7 @@ import com.davemorrissey.labs.subscaleview.decoder.ImageDecodeException
 import kotlinx.coroutines.runInterruptible
 import org.aomedia.avif.android.AvifDecoder
 import org.skepsun.kototoro.core.util.ext.readByteBuffer
+import kotlin.math.roundToLong
 
 class AvifImageDecoder(
 	private val source: ImageSource,
@@ -31,6 +32,42 @@ class AvifImageDecoder(
 			format = "avif",
 			message = "Requested to decode byte buffer which cannot be handled by AvifDecoder",
 		)
+		val frameCount = decoder.frameCount
+		if (frameCount > 1) {
+			val config = if (decoder.depth == 8 || decoder.alphaPresent) {
+				Bitmap.Config.ARGB_8888
+			} else {
+				Bitmap.Config.RGB_565
+			}
+			val durations: DoubleArray? = decoder.frameDurations
+			val durationsMs = LongArray(frameCount) { index ->
+				val sec = durations?.getOrNull(index)
+				if (sec != null) (sec * 1000.0).roundToLong() else 100L
+			}
+			val firstFrame = createBitmap(decoder.width, decoder.height, config)
+			val firstResult = decoder.nextFrame(firstFrame)
+			if (firstResult != 0) {
+				firstFrame.recycle()
+				decoder.release()
+				throw ImageDecodeException(
+					uri = source.fileOrNull()?.toString(),
+					format = "avif",
+					message = AvifDecoder.resultToString(firstResult),
+				)
+			}
+			val drawable = AnimatedAvifDrawable(
+				encoded = bytes,
+				decoder = decoder,
+				frame = firstFrame,
+				frameCount = frameCount,
+				frameDurationsMs = durationsMs,
+				repetitionCount = decoder.repetitionCount,
+			)
+			return@runInterruptible DecodeResult(
+				image = drawable.asImage(),
+				isSampled = false,
+			)
+		}
 		try {
 			val config = if (decoder.depth == 8 || decoder.alphaPresent) {
 				Bitmap.Config.ARGB_8888
@@ -47,7 +84,6 @@ class AvifImageDecoder(
 					message = AvifDecoder.resultToString(result),
 				)
 			}
-			// downscaling
 			val (dstWidth, dstHeight) = DecodeUtils.computeDstSize(
 				srcWidth = bitmap.width,
 				srcHeight = bitmap.height,
@@ -90,7 +126,31 @@ class AvifImageDecoder(
 		override fun hashCode() = javaClass.hashCode()
 
 		private fun isApplicable(result: SourceFetchResult): Boolean {
-			return result.mimeType == "image/avif"
+			if (result.mimeType == "image/avif") return true
+			return try {
+				result.source.source().peek().use { peek ->
+					if (!peek.request(12L)) return@use false
+					val head = peek.readByteArray(12L)
+					if (head[4] != 'f'.code.toByte() ||
+						head[5] != 't'.code.toByte() ||
+						head[6] != 'y'.code.toByte() ||
+						head[7] != 'p'.code.toByte()
+					) return@use false
+					val major = String(head, 8, 4)
+					if (major == "avif" || major == "avis") return@use true
+					if (!peek.request(52L)) return@use false
+					val tail = peek.readByteArray(52L)
+					var i = 0
+					while (i + 4 <= tail.size) {
+						val brand = String(tail, i, 4)
+						if (brand == "avif" || brand == "avis") return@use true
+						i += 4
+					}
+					false
+				}
+			} catch (e: Exception) {
+				false
+			}
 		}
 	}
 }

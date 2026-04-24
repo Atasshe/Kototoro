@@ -199,7 +199,6 @@ class PageViewModel(
 				val bytesRead = stream.read(header)
 				if (bytesRead < 6) return false
 				
-				// Check GIF
 				if (header[0] == 'G'.code.toByte() && 
 					header[1] == 'I'.code.toByte() && 
 					header[2] == 'F'.code.toByte()
@@ -207,8 +206,7 @@ class PageViewModel(
 					return true
 				}
 				
-				// Check Animated WebP
-				if (bytesRead >= 17 &&
+				if (bytesRead >= 21 &&
 					header[0] == 'R'.code.toByte() &&
 					header[1] == 'I'.code.toByte() &&
 					header[2] == 'F'.code.toByte() &&
@@ -221,12 +219,11 @@ class PageViewModel(
 					header[13] == 'P'.code.toByte() &&
 					header[14] == '8'.code.toByte() &&
 					header[15] == 'X'.code.toByte() &&
-					(header[16].toInt() and 0x02) != 0
+					(header[20].toInt() and 0x02) != 0
 				) {
 					return true
 				}
 				
-				// Check Animated AVIF (AVIS)
 				if (bytesRead >= 12 &&
 					header[4] == 'f'.code.toByte() && 
 					header[5] == 't'.code.toByte() && 
@@ -246,14 +243,12 @@ class PageViewModel(
 					}
 				}
 
-				// Check APNG
 				if (bytesRead >= 8 && 
 					header[0] == 0x89.toByte() && header[1] == 0x50.toByte() && 
 					header[2] == 0x4E.toByte() && header[3] == 0x47.toByte() &&
 					header[4] == 0x0D.toByte() && header[5] == 0x0A.toByte() && 
 					header[6] == 0x1A.toByte() && header[7] == 0x0A.toByte()
 				) {
-					// Search for the 'acTL' chunk (Animation Control Chunk) which indicates APNG
 					for (i in 8 until (bytesRead - 4)) {
 						if (header[i] == 'a'.code.toByte() && 
 							header[i+1] == 'c'.code.toByte() && 

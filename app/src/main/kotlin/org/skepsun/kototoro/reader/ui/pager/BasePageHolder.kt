@@ -4,6 +4,7 @@ import android.content.ComponentCallbacks2
 import android.content.ComponentCallbacks2.TRIM_MEMORY_COMPLETE
 import android.content.Context
 import android.content.res.Configuration
+import android.graphics.drawable.Animatable
 import android.view.View
 import androidx.annotation.CallSuper
 import androidx.core.view.isGone
@@ -15,7 +16,9 @@ import coil3.ImageLoader
 import coil3.request.ErrorResult
 import coil3.request.ImageRequest
 import coil3.request.SuccessResult
+import coil3.request.allowHardware
 import coil3.request.target
+import coil3.size.Size
 import coil3.util.CoilUtils
 import com.davemorrissey.labs.subscaleview.DefaultOnImageEventListener
 import com.davemorrissey.labs.subscaleview.SubsamplingScaleImageView
@@ -167,7 +170,11 @@ abstract class BasePageHolder<B : ViewBinding>(
 		super.onDestroy()
 	}
 
-	open fun onAttachedToWindow() = Unit
+	open fun onAttachedToWindow() {
+		(imageAnimated.drawable as? Animatable)?.let { anim ->
+			if (!anim.isRunning) anim.start()
+		}
+	}
 
 	open fun onDetachedFromWindow() = Unit
 
@@ -211,8 +218,13 @@ abstract class BasePageHolder<B : ViewBinding>(
 				val request = ImageRequest.Builder(context)
 					.data(state.uri)
 					.target(imageAnimated)
+					.size(Size.ORIGINAL)
+					.allowHardware(false)
 					.listener(
 						onSuccess = { _: ImageRequest, _: SuccessResult ->
+							(imageAnimated.drawable as? Animatable)?.let { anim ->
+								if (!anim.isRunning) anim.start()
+							}
 							viewModel.state.value = PageState.ShownAnimated(state.uri)
 						},
 						onError = { _: ImageRequest, result: ErrorResult ->
