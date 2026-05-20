@@ -31,15 +31,15 @@ class SearchV2Helper @AssistedInject constructor(
 			return null
 		}
 		val repository = mangaRepositoryFactory.create(source)
-		val listFilter = repository.getFilter(query, kind, advanced) ?: return null
+		val shouldFilterAiGenerated = settings.isFilterAiGeneratedGlobal || (when (repository) { is org.skepsun.kototoro.core.parser.ParserContentRepository -> repository.getConfig().isFilterAiGenerated; is org.skepsun.kototoro.core.parser.kotatsu.KotatsuParserRepository -> repository.getConfig().isFilterAiGenerated; else -> false }); var actualAdvanced = advanced; if (shouldFilterAiGenerated) { actualAdvanced = (actualAdvanced ?: AdvancedSearchParams()).let { it.copy(tags = it.tags + if (it.tags.isNotEmpty()) ",-ai generated" else "-ai generated") } }; val listFilter = repository.getFilter(query, kind, actualAdvanced) ?: return null
 		val sortOrder = repository.getSortOrder(kind)
 		val list = repository.getList(0, sortOrder, listFilter)
 		if (list.isEmpty()) {
 			return null
 		}
 		val result = list.toMutableList()
-		result.postFilter(query, kind, advanced)
-		result.sortByRelevance(query, kind, advanced)
+		result.postFilter(query, kind, actualAdvanced, shouldFilterAiGenerated)
+		result.sortByRelevance(query, kind, actualAdvanced, shouldFilterAiGenerated)
 		return SearchResults(listFilter = listFilter, sortOrder = sortOrder, manga = result)
 	}
 
@@ -121,7 +121,10 @@ class SearchV2Helper @AssistedInject constructor(
 		}
 	}
 
-	private fun MutableList<Content>.postFilter(query: String, kind: SearchKind, advanced: AdvancedSearchParams? = null) {
+	private fun MutableList<Content>.postFilter(query: String, kind: SearchKind, advanced: AdvancedSearchParams? = null, shouldFilterAiGenerated: Boolean = false) {
+		if (shouldFilterAiGenerated) {
+			removeAll { m -> m.tags.any { tag -> tag.title.equals("ai generated", ignoreCase = true) } }
+		}
 		if (settings.isNsfwContentDisabled) {
 			removeAll { it.isNsfw() }
 		}
@@ -160,11 +163,15 @@ class SearchV2Helper @AssistedInject constructor(
 		}
 	}
 
-	private fun MutableList<Content>.sortByRelevance(query: String, kind: SearchKind, advanced: AdvancedSearchParams? = null) {
+	private fun MutableList<Content>.sortByRelevance(query: String, kind: SearchKind, advanced: AdvancedSearchParams? = null, shouldFilterAiGenerated: Boolean = false) {
 		when (kind) {
 			SearchKind.SIMPLE,
 			SearchKind.TITLE -> sortBy { m ->
-				minOf(m.title.levenshteinDistance(query), m.altTitle?.levenshteinDistance(query) ?: Int.MAX_VALUE)
+				var score = -(minOf(m.title.levenshteinDistance(query), m.altTitle?.levenshteinDistance(query) ?: Int.MAX_VALUE))
+				if (shouldFilterAiGenerated && (m.title.contains("ai", ignoreCase = true) || m.description.orEmpty().contains("ai", ignoreCase = true) || m.altTitle.orEmpty().contains("ai", ignoreCase = true) || m.title.contains("ai generated", ignoreCase = true))) {
+					score -= 1000
+				}
+				-score
 			}
 
 			SearchKind.AUTHOR -> sortByDescending { m ->
